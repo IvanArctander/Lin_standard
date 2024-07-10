@@ -138,7 +138,7 @@ mean(wide$F2)/mean(wide$F1)
 
 calib <- group1
 vals <- mod2values(calib)
-vals[vals$name=="d",]$est=F
+vals$est=F
 vals=vals[!vals$group==7,]
 
 st_score= multipleGroup(data = wide[,5:41], model = 1, pars=vals,
@@ -150,7 +150,6 @@ st_score= multipleGroup(data = wide[,5:41], model = 1, pars=vals,
 lin_scores= fscores(extract.group(st_score, "2"), full.scores = T, method = "WLE", plausible.draws = 10,
                     plausible.type = "MH",  response.pattern = wide[,5:41])
  
-
 wide$theta= fscores(st_score, full.scores = T, method = "WLE") 
   
 wide=cbind(wide,do.call(cbind, lin_scores))
@@ -165,12 +164,9 @@ wide[wide$studentGrade==5,]$IQ= (100 +((wide[wide$studentGrade==5,]$theta-1.82)/
 wide[wide$studentGrade==6,]$IQ= (100 +((wide[wide$studentGrade==6,]$theta-2.39)/1.09)*15)
 
 
-
 for (i in 1:10) {
   wide[[paste0("IQ_", i)]] = 0
 }
-
-
 
 grades <- c(1, 2, 3, 4, 5, 6)
 offsets <- c(0, -0.38, -0.76, -1.32, -1.82, -2.39)
@@ -183,7 +179,11 @@ for (grade in grades) {
   }
 }
 
+wide=as.data.frame(wide)
+scored=wide[, c(1:4,42:63)]
+names(scored)
 
+write.xlsx(scored, "lin_2024_scored.xlsx")
 
 #dif comparison with plain Rasch models
 
