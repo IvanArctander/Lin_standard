@@ -4,8 +4,10 @@ library(Rcpp)
 library(shiny)
 library(tidyr)
 library(dplyr)
+library(conflicted)
+conflicted::conflict_prefer("select", "dplyr")
 library(reshape2)
-library(xlsx)
+library("xlsx")
 library(mirt)
 library(polycor)
 library(GPArotation)
@@ -67,8 +69,7 @@ writexl::write_xlsx(data, "lin_items_0908.xlsx")
 
 #get rid of training d_p1, d_p2, d2_p1, d3_p1
 
-data <- data %>%
-  select(-d_p1, -d_p2, -d_p8, -d2_p1, -d3_p1)
+data <- data %>% select(-d_p1, -d_p2, -d_p8, -d2_p1, -d3_p1)
 
 
   
@@ -84,11 +85,11 @@ mirt::coef(group1, simplify = T)
 
 
 
-wle <- fscores(group1,method = "WLE")
+wle <- fscores(group1,method = "WLE", full.scores.SE= T)
 #PVs <- as.data.frame(fscores(group1, plausible.draws = 10, plausible.type = "normal", method = "MAP"))
 
 
-set.seed(1234)
+set.seed(666)
 
 idx_by_grade <- split(seq_len(nrow(data)), data$grade)
 
@@ -119,9 +120,33 @@ row.names(PVs) <- NULL
 
 out <- cbind(
   id  = data$student.id,
-  WLE = as.numeric(wle),
+  grade = data$grade,
+  WLE = wle[,1],
+  WLE_SE = wle[,2],
   PVs
 )
+
+
+describeBy(out$WLE, out$grade)
+
+
+
+# Transform per grade
+out$WLE_IQ    <- NA
+out$WLE_SE_IQ <- NA
+PVs_IQ <- as.data.frame(matrix(NA, nrow=nrow(PVs), ncol=ncol(PVs)))
+names(PVs_IQ) <- paste0(names(PVs), "_IQ")
+
+for (g in unique(data$grade)) {
+  idx <- which(data$grade == g)
+  mean_g <- mean(wle[idx,1], na.rm=TRUE)
+  sd_g   <- sd(wle[idx,1], na.rm=TRUE)
+  out$WLE_IQ[idx]    <- 100 + 15 * (wle[idx,1] - mean_g) / sd_g
+  out$WLE_SE_IQ[idx] <- 15 * wle[idx,2] / sd_g
+  PVs_IQ[idx,] <- lapply(PVs[idx,], function(x) 100 + 15 * (x - mean_g) / sd_g)
+}
+
+out <- cbind(out, PVs_IQ)
 
 
 writexl::write_xlsx(out, "lin_clean25.xlsx")
